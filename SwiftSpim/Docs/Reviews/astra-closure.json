@@ -1,0 +1,460 @@
+{
+  "reviewer": "GPT-6.2 Astra",
+  "scope": "Final verification of the 63 review decisions for the Swift QtSpim port. All accepted items are addressed within the documented test scope. These finite checks do not establish exhaustive equivalence. Publication is managed by the project owner.",
+  "verification_basis": [
+    ".build/final-hosted-tests.log: 40 core and 14 debugger/layout/console tests passed (54 total)",
+    "Scripts/compare-regressions.py and .build/regression-parity.log: 29 focused byte/status comparisons passed",
+    "Constrained native 570 × 150 host-window test completed tt.core and verified pass-marker visibility; separate 100,000-line test preserved output and verified the visible tail",
+    "Manual controlled-environment comparisons against compiled r764, with no developer environment captured",
+    "Revised user manual verified against corrected behavior. Final macOS UI verification includes dock manipulation, font migration and settled small-console output.",
+    ".build/final-upstream.log, .build/final-words.log and .build/final-memory.log: seven fixture comparisons, 4,758 words and four memory layouts passed"
+  ],
+  "counts": {
+    "closed": 58,
+    "closed_rejected": 1,
+    "closed_with_limit": 4
+  },
+  "items": [
+    {
+      "id": "UM-STOP-01",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "Debugger.stop preserves PC; Machine.stop resets breakpoint bypass. Verified revised usermanual.md §5 Stop, Abort and explicit restart table.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-MMIO-02",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "SpimOptions.usesMappedIO; testEffectiveConsoleModeAndSourceFailureVisibility. Verified revised usermanual.md §7 effective MMIO and §15 CLI option table.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-LAUNCH-03",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "Debugger.launch/Debugger.load; testLaunchAndDockPreferencesRoundTrip. Verified revised usermanual.md §14 GUI launch examples, option ordering and persistence.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-CONSOLE-04",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "Debugger.sendInput; testEffectiveConsoleModeAndSourceFailureVisibility. Verified revised usermanual.md §7 line submission and MMIO checkbox scope.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-RUNPARAM-05",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "ModalView stages RunParameters; testRunParameterDraftOnlyCommitsOnDone. Verified revised usermanual.md §6 Done/Cancel; final native smoke observed discarded draft on reopening and accepted Done.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-PCEDIT-06",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "Debugger.explicitFirstPC and readyToStart; testPCEditKeepsArgvAndReloadTracksMostRecentURL. Verified revised usermanual.md §6 explicit first PC with argv and environment.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-QUIET-07",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "Debugger.assemble/drainDiagnostics; testGuestStandardErrorRemainsVisibleInQuietMode. Verified revised usermanual.md §9 Quiet diagnostic policy.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-DATA-08",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "Machine.peekWord; testPeekDoesNotConsumeDevicesAndTransmitterInterruptIsEdgeTriggered and testMemoryAndTextLogIncludeZeroRangesAndRuntimeInstructions. Verified revised usermanual.md §8 live memory/ASCII/editing and compressed zero ranges.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-CLIORDER-09",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "CLI left-to-right mode/handler parsing. Check final reference outputs for -ef followed by -noexception. Verified revised usermanual.md §14–15 mode and handler order, 29-case oracle includes disabled-custom-handler.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-RERUN-10",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "testStepTerminationRestartsWhileRepeatedRunKeepsExitPC covers distinct Run and Step endings. Confirm installed Qt result. Verified revised usermanual.md §5 distinct Run and Single Step terminal transitions and clear-registers/reload recipes.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-SCOPE-11",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "testEarlierForwardUseResolvesToLaterLocalDefinitionOnly; A forward-references helper in B without .globl on native REPL. Verified revised usermanual.md §4 multi-file symbols and forward-use asymmetry.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-WINMENU-12",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "DebugCommands differentiates Show <panel> and Open Separate Window; verify native menu. Verified revised usermanual.md §10 Show items, inspector titles and Float menu.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-RELPATH-13",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "Machine.openInGuestDirectory uses process-relative or restricted-root paths. Existing manual already avoids asserting Finder cwd. Verified revised usermanual.md §9 cwd and scoped directories.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-HISTORY-14",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "Revised usermanual.md and Docs/COMPATIBILITY.md distinguish historical results, the completed reviews, supported docking and the physical-input validation limit.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-HANDLER-15",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "testEffectiveConsoleModeAndSourceFailureVisibility; testCustomHandlerAllowsExtendedAssemblyWithBareUserCode. Verified revised usermanual.md §9 missing custom path and default/no-handler selection.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-ARGV0-16",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "testPCEditKeepsArgvAndReloadTracksMostRecentURL verifies A/B/reload A, even with recent history size zero. Verified revised usermanual.md §6 GUI argv[0] most recently loaded or reloaded URL.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-COVERAGE-01",
+      "review_decision": "duplicate",
+      "status": "closed",
+      "evidence": "Verified revised usermanual.md §14 GUI launch.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-COVERAGE-02",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "Verified revised usermanual.md §5 reset/retained-state tables.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-COVERAGE-03",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "Verified revised §12 covers all 17 services, service 4 excludes the NUL, service 12 NUL/EOF maps to 10, and services 14/15 reject invalid mapped ranges with -1.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-COVERAGE-04",
+      "review_decision": "duplicate",
+      "status": "closed",
+      "evidence": "Verified revised usermanual.md §4 multi-file ordering.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-COVERAGE-05",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "Verified revised usermanual.md §13 CP0/vector and terminal faults.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-COVERAGE-06",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "Verified revised usermanual.md §13 Help and About commands.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-COVERAGE-07",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "Verified revised usermanual.md §9 recover preferences without assuming a development bundle domain.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-COVERAGE-08",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "Verified revised usermanual.md §16 checkout/build upstream and run scripts.",
+      "remaining": ""
+    },
+    {
+      "id": "UM-COVERAGE-09",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "Verified revised usermanual.md §10 native docking; §15 terminal-only REPL/dump tools are excluded.",
+      "remaining": ""
+    },
+    {
+      "id": "ORACLE-FAULT-STATUS",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "Scripts/compare-regressions.py passes unknown-syscall, missing-instruction, exit-status.",
+      "remaining": ""
+    },
+    {
+      "id": "ORACLE-EXCEPTION-VECTOR",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "overflow-no-handler, exception-nonquiet, exception-quiet compare stdout/stderr/status; Machine.exception vectors even without loaded text. compare-upstream.sh now sets -quiet symmetrically.",
+      "remaining": ""
+    },
+    {
+      "id": "ORACLE-UNRESOLVED-J",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "undefined-jump oracle matches absolute annotation/source; upstream tt.alu.bare covers unresolved relative branch.",
+      "remaining": ""
+    },
+    {
+      "id": "ORACLE-BYTE-OUTPUT",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "raw-char-output, split-utf8-output pass byte comparison. Machine uses raw byte buffers; CLI writes Data without Unicode conversion.",
+      "remaining": ""
+    },
+    {
+      "id": "ORACLE-DEFAULT-START",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "missing-start passes; both GUI and CLI set strictEntryPoint while Machine retains explicit and library convenience modes.",
+      "remaining": ""
+    },
+    {
+      "id": "ORACLE-EOF",
+      "review_decision": "reject",
+      "status": "closed_rejected",
+      "evidence": "eof-char returns 10 on both CLIs. Separate NUL byte case tracked in SSPIM-IO-001.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-ASM-001",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "testSemanticErrorsRetainFollowingInstructionsButSyntaxStopsTheInput plus duplicate-label, ignored-rev2, divide-by-zero-constant and data-in-text native comparisons.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-UI-001",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "Final normal-entry tt.core accepted all six lines, printed Passed all tests and exited 0. Cooperative batches and testRunLoopRemainsInterruptibleDuringInfiniteGuest cover interruptibility without per-1024-instruction sleeps.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-ASM-002",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "testEarlierForwardUseResolvesToLaterLocalDefinitionOnly and independent native A/B forward-use trace.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-DBG-001",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "testInputBreakpointBypassSurvivesWaitingForInput and testContinueFromInputBreakpointCompletesSyscallOnce pass from both core and controller.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-MSG-001",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "overflow-no-handler, exception-nonquiet, exception-quiet compare stdout/stderr/status; Machine.exception vectors even without loaded text. compare-upstream.sh now sets -quiet symmetrically.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-DBG-002",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "testIncrementalInstallPreservesHeapGrownStackQueuedInputAndRuntimeText; testIncrementalInstallPreservesPendingBranchAndOpenFile; GUI reload test checks machine identity.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-IO-001",
+      "review_decision": "duplicate",
+      "status": "closed",
+      "evidence": "Raw binary stream regressions pass, signed 0xe9 -> -23 matches Darwin r764, and independent NUL -> 10 now matches both CLIs.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-IO-002",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "raw-source-literal native comparison, testLatin1SourceLiteralsPreserveTheirOriginalBytes. GUI and CLI both construct SourceInput from Data.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-RES-001",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "Assembler embeds StandardExceptionHandler; independent debug CLI copied standalone to a temporary directory ran Hello World with no resource bundle adjacent and empty stderr.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-MODE-001",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "testCustomHandlerAllowsExtendedAssemblyWithBareUserCode checks independence of bare, pseudo permission and both delay settings; encoding and Machine now use explicit delays.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-MMIO-001",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "testPeekDoesNotConsumeDevicesAndTransmitterInterruptIsEdgeTriggered verifies enable-on-ready, cleared Cause and no reassertion while continuously ready.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-CLI-001",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "eof-char, eof-string, eof-read, raw-string-input comparisons and testConsoleBytesAndEndOfInputAreServiceSpecific pass.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-ASM-003",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "assembler-warnings matches source positions/progression. .err ends assembly with nonzero status; original fatal_error on this Darwin build emits indeterminate bytes. A deterministic error is sufficient.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-START-001",
+      "review_decision": "duplicate",
+      "status": "closed",
+      "evidence": "missing-start passes; both GUI and CLI set strictEntryPoint while Machine retains explicit and library convenience modes.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-STACK-001",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "testStackContainsInjectedEnvironmentAndLongArgumentsWithoutTruncation validates synthetic envp, long argv, argc, terminators and SP. Both front ends pass hostEnvironment in normal operation.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-SYS-001",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "sbrk-negative and sbrk-limit native comparisons pass with the reference message and exit code.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-CLI-002",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "GUI option tests pass. Rebuilt CLI produced identical empty stdout/stderr and status 0 with custom -ef followed by -noexception; CLI -file forwards argv.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-DBG-003",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "Final release Hello World stopped at main, single-stepped to PC 0x00400028 with v0=4, then F5 printed Hello World and exited 0. Controller regression verifies repeat-Run vs step-ending restart. Qt state transition rationale retained in decisions.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-UI-002",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "Final rebuilt native Data pane showed compact aligned 15-point single-line rows in a split; controller/export tests verify live memory words, read-only device inspection and compressed zero ranges.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-PERF-001",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "Final release in the small docked console completed tt.core after six submitted inputs, exited 0 and visibly showed Testing SLEU, Testing SNE and Passed all tests without redocking or resizing. Apple Silicon hosted-window regression verifies the pass marker inside both the actual 89-point viewport and its 150-point host. A separate native test checks all 100,000 lines, UTF-8 repair, visible tail and clearing.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-UI-003",
+      "review_decision": "duplicate",
+      "status": "closed",
+      "evidence": "testEffectiveConsoleModeAndSourceFailureVisibility verifies hidden newline cannot affect ordinary syscall input. Final release tt.core finished after all six input submissions.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-DOC-001",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "Revised §12 describes virtual descriptors, binary streams, mapped-range validation and removal of the fixed transfer limit. Post-review comparisons include closed stdin and binary stderr.",
+      "remaining": ""
+    },
+    {
+      "id": "SSPIM-UI-004",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "testMemoryAndTextLogIncludeZeroRangesAndRuntimeInstructions verifies runtime-written instruction visibility and source metadata. Shared export path exercised by previous native log and PDF smoke.",
+      "remaining": ""
+    },
+    {
+      "id": "CODE-COVERAGE-01",
+      "review_decision": "accept",
+      "status": "closed_with_limit",
+      "evidence": "Final 54 native tests and release build, 29 focused comparisons, seven fixtures, 4,758 words, four layouts, bounded timer and six-line GUI core run passed. Relocation and print/log paths had prior native coverage. Native pointer/tail checks completed under the linked docking and console records.",
+      "remaining": ""
+    },
+    {
+      "id": "CODE-COVERAGE-02",
+      "review_decision": "revise",
+      "status": "closed",
+      "evidence": "Independent post-fix native compare: all seven upstream fixture streams/statuses and all 4,758 tt.core instruction words match. AssemblerRecovery and forward-fixup tests pass.",
+      "remaining": ""
+    },
+    {
+      "id": "CODE-COVERAGE-03",
+      "review_decision": "accept",
+      "status": "closed_with_limit",
+      "evidence": "Prior real-app screenshot/AX comparison and native all-panel log/102-page PDF, plus current regression on live disassembly, zero ranges and text writes. Exact visual/typographic identity and exhaustive FP formatting were not claimed.",
+      "remaining": ""
+    },
+    {
+      "id": "CODE-COVERAGE-04",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "Controlled r764 read.s and bounded time.s exact. Bounded timer.s exits on Count=15 or first handler; mapped mode prints one interrupt message on both CLIs, unmapped mode produces none on either CLI. Both statuses 0 and stderr empty. testRunSamplesPendingInterruptAtQtBatchBoundaries verifies GUI software IRQ delivery at the 100,000-instruction boundary.",
+      "remaining": ""
+    },
+    {
+      "id": "CODE-COVERAGE-05",
+      "review_decision": "revise",
+      "status": "closed_with_limit",
+      "evidence": "Native big-endian oracle unavailable. The rebuilt debug CLI running tt.be with --big-endian exits 0 with Passed all tests and empty stderr. Core endian unit tests pass.",
+      "remaining": ""
+    },
+    {
+      "id": "CODE-COVERAGE-06",
+      "review_decision": "revise",
+      "status": "closed_with_limit",
+      "evidence": "Final native split placement survived relaunch; independent native testLaunchAndDockPreferencesRoundTrip covers saved groups and injected options. Historical GUI final release persistence checks also covered simulator prefs. Unrestricted FIFO main-thread behavior was not separately stress-tested.",
+      "remaining": ""
+    },
+    {
+      "id": "CODE-COVERAGE-07",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "Tests/SpimCoreTests/ReviewRegressionTests.swift and Tests/SwiftSpimTests/DebuggerTests.swift cover semantic recovery, scoped symbols, input breakpoints, incremental state, IRQ, source bytes, guest streams and stack. Controlled command-line comparisons additionally cover service 12 NUL, closed fd0, post-disable banner and mapped/unmapped timer.",
+      "remaining": ""
+    },
+    {
+      "id": "CODE-COVERAGE-08",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "GUI keeps distinct file list, CLI -file documents guest arguments; neither adopts unrelated upstream persistence-key errors.",
+      "remaining": ""
+    },
+    {
+      "id": "ASTRA-DOCK",
+      "review_decision": "accept",
+      "status": "closed",
+      "evidence": "Final release native pointer: dragged Data tab to bottom to split, onto Text header to retab, register divider to resize, and Data header to x=1280 outside the 1240-point workspace to float. Floating Data Segments Inspector exposed Dock Again. Dock Again Console and Arrange menu split also verified. Split persisted after restart. Native hit-test/coordinate and exhaustive serializable layout-model tests passed.",
+      "remaining": ""
+    }
+  ]
+}

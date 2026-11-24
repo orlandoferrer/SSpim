@@ -1,0 +1,764 @@
+{
+  "reviewer": "GPT-6.2 Astra",
+  "reviewed_snapshot": "reviewed-snapshot.json",
+  "scope": "Decisions on the pre-fix reviewed snapshot. QtSpim GUI/core and Apple Silicon are the product target. The auxiliary CLI is a validation interface. Current closure requires evidence from the post-fix build.",
+  "publication_status": "Hold until accepted fixes and validation close. No public publication action was performed by this reviewer.",
+  "order": [
+    "Core runtime, assembly recovery, options and terminal oracle cases",
+    "Preservation of live machine on incremental load and debugger interaction",
+    "Live segment views, docking, UI responsiveness and relocation",
+    "Manual, scope and notices; clean build and all regression/native interactions; publish only once review actions are closed"
+  ],
+  "publication_blockers": [
+    "UM-MMIO-02",
+    "UM-LAUNCH-03",
+    "UM-CONSOLE-04",
+    "UM-RUNPARAM-05",
+    "UM-PCEDIT-06",
+    "UM-QUIET-07",
+    "UM-DATA-08",
+    "UM-RERUN-10",
+    "UM-HANDLER-15",
+    "UM-COVERAGE-05",
+    "UM-COVERAGE-09",
+    "ORACLE-FAULT-STATUS",
+    "ORACLE-EXCEPTION-VECTOR",
+    "ORACLE-UNRESOLVED-J",
+    "ORACLE-BYTE-OUTPUT",
+    "ORACLE-DEFAULT-START",
+    "SSPIM-ASM-001",
+    "SSPIM-UI-001",
+    "SSPIM-ASM-002",
+    "SSPIM-DBG-001",
+    "SSPIM-MSG-001",
+    "SSPIM-DBG-002",
+    "SSPIM-IO-001",
+    "SSPIM-IO-002",
+    "SSPIM-RES-001",
+    "SSPIM-MODE-001",
+    "SSPIM-MMIO-001",
+    "SSPIM-CLI-001",
+    "SSPIM-ASM-003",
+    "SSPIM-START-001",
+    "SSPIM-STACK-001",
+    "SSPIM-SYS-001",
+    "SSPIM-CLI-002",
+    "SSPIM-DBG-003",
+    "SSPIM-UI-002",
+    "SSPIM-UI-003",
+    "SSPIM-DOC-001",
+    "SSPIM-UI-004",
+    "CODE-COVERAGE-02",
+    "CODE-COVERAGE-03",
+    "CODE-COVERAGE-04",
+    "CODE-COVERAGE-07",
+    "ASTRA-DOCK"
+  ],
+  "scope_exclusions": [
+    "Qt aesthetics/pixel-for-pixel rendering",
+    "Exact replication of terminal-only interactive REPL or legacy terminal dump file modes",
+    "A new-contribution license without user selection"
+  ],
+  "manual_strengths": "All twelve positive observations were considered. Retain established shortcuts, bundle attribution, working fixture walkthroughs and scoped claims. Update export, CLI and state descriptions to follow corrected behavior.",
+  "findings": [
+    {
+      "id": "UM-STOP-01",
+      "decision": "accept",
+      "priority": "P3",
+      "rationale": "Stop preserves PC. Abort clears the breakpoint skip and re-arms the same address.",
+      "evidence": "Sources/SwiftSpim/Debugger.swift:354-360 (stop() = pause() + machine.stop(), status label 'Stopped'); Sources/SpimCore/Machine.swift:174 (stop() sets .paused and clears breakpointSkip); Sources/SwiftSpim/Debugger.swift:161-167 (mayExecute is true when paused); Sources/SwiftSpim/Debugger.swift:301-302 (run parameters are not re-applied once didStart is set); Sources/SpimCore/Machine.swift:197-200 (a breakpoint at the PC fires again because breakpointSkip is nil); Sources/SwiftSpim/DebugDialogs.swift:71 (Abort calls stop()). Same behavior as upstream: QtSpim/menu.cpp:284-288,299-306.",
+      "action": "Document resume, same-PC breakpoint and clean restart.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): Reinitialize and load helloworld.s, set a breakpoint at main, press F5, then choose Abort. The status shows Stopped. Press F5: Breakpoint Reached appears again at the same address. Choose Continue: Hello World prints and the status shows Exited (0).",
+      "publication_blocker": false
+    },
+    {
+      "id": "UM-MMIO-02",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "CPU device polling is disabled in bare mode. UI currently checks only the requested flag.",
+      "evidence": "Sources/SpimCore/Machine.swift:218 (mmio = mappedIO && !bareMachine); Sources/SpimCore/Machine.swift:357-365 (receiver is fed only when mmio is true); Sources/SpimCLI/main.swift:135 (CLI feeds stdin only if !bareMachine); Sources/SwiftSpim/DebugDialogs.swift:141 (the MMIO toggle stays enabled in bare mode); Sources/SwiftSpim/DebugPanels.swift:332-334 and Debugger.swift:375 (Append newline appears and echo is off based only on mappedIO). Upstream does the same: CPU/run.cpp:174,184.",
+      "action": "Use effective device mode in console presentation and document the bare-mode restriction.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): Turn on Bare Machine and Memory-mapped I/O, reinitialize, and load tt.io.s (or another polling program). Send input: the program never sees it. Turn off Bare Machine, reinitialize, and repeat: the input arrives.",
+      "publication_blocker": true
+    },
+    {
+      "id": "UM-LAUNCH-03",
+      "decision": "accept",
+      "priority": "P2",
+      "rationale": "App parser consumes every argument following -file as a source. Settings writes and session-only capacities need distinct explanations.",
+      "evidence": "Sources/SwiftSpim/SwiftSpimApp.swift:54 (launch(CommandLine.arguments)); Sources/SwiftSpim/Debugger.swift:494-547 (app parser: -bare also sets quiet at 501; -file treats every following token as a source file at 533-536; --pc, --guest-directory, --no-file-io and --big-endian are not recognized and only log 'Unknown option' at 538); Sources/SwiftSpim/Debugger.swift:186-192 (configureBare saves preferences immediately); Sources/SwiftSpim/Debugger.swift:231 (a successful load saves preferences, including mappedIO, handler and quiet). Upstream QtSpim/main.cpp:186-189 also treats everything after -file as files.",
+      "action": "Show direct bundle invocation and open -n with absolute paths. Document persistence only for flags actually saved by the exercised path.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): Launch the bundle with `--args -bare -file /abs/helloworld.s` and quit. Launch it normally and open Settings: Bare machine and Quiet are still on.",
+      "publication_blocker": true
+    },
+    {
+      "id": "UM-CONSOLE-04",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "Input submission tests a hidden checkbox even in syscall mode.",
+      "evidence": "Sources/SwiftSpim/Debugger.swift:49 (appendNewline is session state and is never reset); Sources/SwiftSpim/Debugger.swift:374 (the newline is added only if appendNewline is true); Sources/SwiftSpim/DebugPanels.swift:332-334 (the toggle is shown only when the current machine has mappedIO on).",
+      "action": "Use newline-terminated input and normal echo outside effective MMIO. Exercise switching modes without relaunch.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): Enable MMIO, reinitialize, and turn Append newline off. Disable MMIO, reinitialize, and load tt.core.s. Enter 17 and press Send: the program stays in Waiting for input.",
+      "publication_blocker": true
+    },
+    {
+      "id": "UM-RUNPARAM-05",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "Cancel discards nothing in the Swift fields. Qt menu.cpp:245–260 commits only an accepted dialog.",
+      "evidence": "Sources/SwiftSpim/DebugDialogs.swift:26-27 (the text fields write directly to debugger.startAddress and debugger.arguments); Sources/SwiftSpim/DebugDialogs.swift:77 (Cancel only closes the sheet); Sources/SwiftSpim/Debugger.swift:303-310 (those values are used at the next initialized Run or Step).",
+      "action": "Stage Run Parameters and commit only on Done. Verify Cancel and Escape.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): Open Set Run Parameters, type `main`, choose Cancel, reinitialize and load helloworld.s, then Single Step. The PC starts at main, not __start.",
+      "publication_blocker": true
+    },
+    {
+      "id": "UM-PCEDIT-06",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "The explicit PC edit bypasses initialization of argv.",
+      "evidence": "Sources/SwiftSpim/Debugger.swift:450 (editing PC sets didStart = true); Sources/SwiftSpim/Debugger.swift:301-313 (readyToStart returns early, so setRunParameters never runs); Sources/SpimCore/Machine.swift:61-68,137-166 (the stack built at init uses the empty GUI argument list).",
+      "action": "Separate first-run stack preparation from explicit PC selection. Preserve manual PC and preconfigured argv.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): Set the arguments to `a b`, reinitialize and load a program that prints $a0 at main, edit PC to the address of main, then run. It prints 0 instead of 3.",
+      "publication_blocker": true
+    },
+    {
+      "id": "UM-QUIET-07",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "Quiet suppresses debugger log lines indiscriminately while CPU exception reporting has distinct upstream quiet semantics.",
+      "evidence": "Sources/SwiftSpim/Debugger.swift:284-287 (log() does nothing when quiet); Sources/SwiftSpim/Debugger.swift:246-248 ('Undefined symbols:' goes through log); Sources/SwiftSpim/Debugger.swift:327,333,359,367 (exit/fault status, breakpoint, stop and step-fault lines go through log); Sources/SwiftSpim/Debugger.swift:245 (assembler diagnostics bypass Quiet); Sources/SwiftSpim/Debugger.swift:501 (launching with -bare turns Quiet on).",
+      "action": "Keep actionable undefined-symbol and terminal diagnostic visibility; describe quiet eligibility and still-visible status with a fresh build.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): Turn on Quiet, reinitialize, and load helloworld.s (it references the undefined foobar). Messages shows no 'Undefined symbols: foobar' line. Turn Quiet off and reload: the line appears.",
+      "publication_blocker": true
+    },
+    {
+      "id": "UM-DATA-08",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "Text words are held in code, unlike the dictionary-only UI read, and inspector writes modify executable text.",
+      "evidence": "Sources/SwiftSpim/Debugger.swift:419-425 (readWord reads only machine.memory); Sources/SpimCore/Machine.swift:40,79-80 (instruction words are kept in a separate code table); Sources/SpimCore/Machine.swift:304-306,317-321 (a Data-pane write to a text address changes the instruction in that code table); Sources/SwiftSpim/Debugger.swift:412-416 (the jump row for a text address is shown under the User Data filter).",
+      "action": "Provide side-effect-free word peek for text, data and mapped-device state. Use it in Data, ASCII and exports.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): Load helloworld.s, type `main` in Address or symbol, and press Return: the row reads zeros, while the Text tab shows a non-zero word at that address.",
+      "publication_blocker": true
+    },
+    {
+      "id": "UM-CLIORDER-09",
+      "decision": "accept",
+      "priority": "P3",
+      "rationale": "CLI resets settings as the options are parsed and retains selected handler path when enabling exceptions again.",
+      "evidence": "Sources/SpimCLI/main.swift:58-104 (options are processed left to right); main.swift:62 (-asm turns delays off and pseudo-instructions on); main.swift:63 (-bare turns pseudo-instructions off); main.swift:66-68,110-113 (-exception after -ef FILE keeps the custom file and does not switch back to the bundled handler). Compare Sources/SwiftSpim/Debugger.swift:504-505 (the app's -exception switches back to the default handler).",
+      "action": "Describe order and custom-handler precedence.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): Run `swift run swiftspim-cli -delayed_branches -asm -file X.s` with a program that depends on delayed branches; it behaves as if delays were off. Run `-ef custom.s -exception` and check that the custom handler's banner or behavior appears.",
+      "publication_blocker": false
+    },
+    {
+      "id": "UM-RERUN-10",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "Qt menu.cpp:265–275 unconditionally sets IDLE after Run, unlike a terminal Single Step. menu.cpp:299 initializes only on unforced STOPPED or PC zero. A general F5 restart promise is unsupported.",
+      "evidence": "Sources/SpimCore/Machine.swift:112-126 (clearRegisters sets PC to 0 and status to .ready); Sources/SwiftSpim/Debugger.swift:277-283 (didStart=false, so the next Run applies run parameters and the entry point, Machine.swift:128-135); Sources/SwiftSpim/Debugger.swift:251-255 (after an exit, Load File creates a ready machine but copies the old PC, so Run is enabled again and continues from that stale PC). QtSpim restarts on Run after an exit: QtSpim/menu.cpp:299-306.",
+      "action": "Verify and document actual repeat Run/Step with Qt. Fix incremental-load stale terminal state and reproduce observed transitions. Document Clear Registers or Reinitialize and Load for an intentional restart.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): Run helloworld.s to Exited (0). Choose Clear Registers: Run becomes enabled, and F5 prints Hello World a second time after the first.",
+      "publication_blocker": true
+    },
+    {
+      "id": "UM-SCOPE-11",
+      "decision": "revise",
+      "priority": "P3",
+      "rationale": "Scoping and global declarations affect both relocation and debugger symbol lookup.",
+      "evidence": "Sources/SpimCore/Assembler.swift:195-214 (a label is local to its file unless named in .globl/.global/.extern/.comm; main, __start and __eoth are always global); Sources/SpimCore/Assembler.swift:257-263 (a local label defined in more than one file is dropped from the visible symbol table).",
+      "action": "Reflect verified first-use and flush rules in SSPIM-ASM-002. Recommend explicit .globl for predictable cross-file linkage. Test both load orders and duplicate local names.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): Load a.s, which calls `foo` defined without .globl in b.s: an undefined symbol is reported. Add `.globl foo` to b.s, use Reinitialize and Load File for both files: the reference resolves.",
+      "publication_blocker": false
+    },
+    {
+      "id": "UM-WINMENU-12",
+      "decision": "revise",
+      "priority": "P3",
+      "rationale": "Custom toggles and separate-window commands exist. SwiftUI automatic menu placement depends on the runtime.",
+      "evidence": "Sources/SwiftSpim/SwiftSpimApp.swift:24-26,127-128 (panel toggles named 'Integer Registers', 'Floating-Point Registers', 'Text Segments', 'Data Segments', 'Console', 'Messages'); Sources/SwiftSpim/SwiftSpimApp.swift:60-71 (single-instance Window scenes with the same titles, which SwiftUI adds to the Window menu by itself).",
+      "action": "Inspect actual Window menu. Clearly label visibility/tabs versus additional inspectors if duplicates are present.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): Open the Window menu in dist/SwiftSpim.app and count the 'Integer Registers' and 'Console' items. Choose each one and note what happens.",
+      "publication_blocker": false
+    },
+    {
+      "id": "UM-RELPATH-13",
+      "decision": "revise",
+      "priority": "P3",
+      "rationale": "open(path) resolves against process cwd. A Finder-specific universal directory is unverified and unnecessary.",
+      "evidence": "Sources/SpimCore/Machine.swift:750-758 (in unrestricted mode, open(path) is called directly, so relative paths resolve against the process working directory).",
+      "action": "Explain cwd and selected-directory/absolute paths. Avoid claiming a fixed Finder cwd.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): From the bundle, run a program that opens \"data.txt\" for reading with data.txt next to the .s file: $v0 = -1. Repeat with an absolute path, or with the restricted folder set to that directory: the open succeeds.",
+      "publication_blocker": false
+    },
+    {
+      "id": "UM-HISTORY-14",
+      "decision": "revise",
+      "priority": "P3",
+      "rationale": "Older Linux results and newer Darwin results can both be accurate. Process history obscures the current scope for readers.",
+      "evidence": "Docs/COMPATIBILITY.md:17-18 (still says 26 tests on Linux and six fixtures compared on stdout and exit status only) contradicts Docs/COMPATIBILITY.md:33-34 (30 tests, seven fixtures including stderr); Docs/COMPATIBILITY.md:38 ('external peer review remains in progress'); Docs/MACOS-VALIDATION.md:40-48 (notes about the restricted sandbox environment).",
+      "action": "Retain platform/date labels in verification docs, summarize latest results separately, remove obsolete in-progress language and development workarounds from the product manual.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): Read COMPATIBILITY.md from top to bottom: the test counts and fixture coverage should agree everywhere, and there should be no review-process notes.",
+      "publication_blocker": false
+    },
+    {
+      "id": "UM-HANDLER-15",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "Empty custom path silently selects the built-in handler despite explicit custom selection.",
+      "evidence": "Sources/SwiftSpim/Debugger.swift:239-243 (the custom file is used only when handlerPath is not empty; otherwise effective.loadExceptionHandler stays true and Assembler.swift:38-44 inserts the bundled exceptions.s).",
+      "action": "Provide a clear missing-path diagnostic or disallow committing an incomplete selection. Document the effective result.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): Turn off Use default exception handler, clear the path, reinitialize: __start and the kernel text from the bundled handler still appear in the Text tab.",
+      "publication_blocker": true
+    },
+    {
+      "id": "UM-ARGV0-16",
+      "decision": "revise",
+      "priority": "P3",
+      "rationale": "files.last is the newest unique list slot, not necessarily most recently reloaded URL. Qt uses st_recentFiles[0].",
+      "evidence": "Sources/SwiftSpim/Debugger.swift:309 (argv[0] = files.last full path). Upstream does something similar: QtSpim/menu.cpp:312-313 (most recent file).",
+      "action": "Use the latest successfully loaded URL; test A,B,reload A with a zero recent-menu limit.",
+      "validation": "Baseline reproduction before correction (after correction assert the result described under action): Load main.s and then util.s, run a program that prints argv[0]: it prints the full path of util.s.",
+      "publication_blocker": false
+    },
+    {
+      "id": "UM-COVERAGE-01",
+      "decision": "duplicate",
+      "priority": "P3",
+      "rationale": "Launching the app with SPIM command-line options: how to pass them (open -n --args or the bundle executable), that everything after -file is a file, which options are CLI-only, that options are saved as preferences, and how to undo them (see UM-LAUNCH-03).",
+      "evidence": "UM-LAUNCH-03",
+      "action": "Include verified app invocation, parsing and preference persistence.",
+      "validation": "Cross-check corresponding manual section with actual UI/CLI and the cited implementation.",
+      "publication_blocker": false
+    },
+    {
+      "id": "UM-COVERAGE-02",
+      "decision": "accept",
+      "priority": "P3",
+      "rationale": "What each control resets: a table showing what Pause, Stop, Clear Registers, Reinitialize Simulator, Load File and Reinitialize and Load File do to PC, registers, memory, console output, the input buffer, breakpoints, run parameters, open guest files and settings, plus the recommended way to re-run a program.",
+      "evidence": "Debugger.swift:230–283,301–379; Machine.swift:95–174",
+      "action": "Add a reset/state table and check each cell including files, input, stack and breakpoints.",
+      "validation": "Cross-check corresponding manual section with actual UI/CLI and the cited implementation.",
+      "publication_blocker": false
+    },
+    {
+      "id": "UM-COVERAGE-03",
+      "decision": "accept",
+      "priority": "P3",
+      "rationale": "Syscall reference: services 1–17 as implemented (print, read with newline and length rules, sbrk limits, exit/exit2, open/read/write/close returning -1 on failure, and fd 0/1/2 behavior), since beginner exercises depend on these.",
+      "evidence": "Machine.swift:800–863; CPU/syscall.cpp:101–233",
+      "action": "List services 1–17, arguments, results, input boundaries, descriptor behavior and file errors; verify byte examples.",
+      "validation": "Cross-check corresponding manual section with actual UI/CLI and the cited implementation.",
+      "publication_blocker": false
+    },
+    {
+      "id": "UM-COVERAGE-04",
+      "decision": "duplicate",
+      "priority": "P3",
+      "rationale": "Multi-file programs: .globl/.extern rules, load order, duplicate-label errors when a second program is added with Load File, and using Reinitialize and Load File when switching to a different exercise.",
+      "evidence": "UM-SCOPE-11",
+      "action": "Include load order, global resolution, conflicts and switching exercise.",
+      "validation": "Cross-check corresponding manual section with actual UI/CLI and the cited implementation.",
+      "publication_blocker": false
+    },
+    {
+      "id": "UM-COVERAGE-05",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "Exceptions and faults: what 'Fault:' in the status bar means, what happens with no handler loaded (the simulator stops) versus the default handler (prints a message and continues), and how EPC, Cause and BadVAddr help with debugging.",
+      "evidence": "Machine.swift:328–344; CPU/syscall.cpp:241–300",
+      "action": "Describe CP0, vectoring, quiet diagnostics and handler-dependent control flow after exception fixes.",
+      "validation": "Cross-check corresponding manual section with actual UI/CLI and the cited implementation.",
+      "publication_blocker": true
+    },
+    {
+      "id": "UM-COVERAGE-06",
+      "decision": "accept",
+      "priority": "P3",
+      "rationale": "Help menu: SwiftSpim Help (⌘?), the Original SPIM Documentation link, and About.",
+      "evidence": "SwiftSpimApp.swift:140–147; DebugDialogs.swift:62–66",
+      "action": "Cover Help, upstream documentation and About; verify links/actions.",
+      "validation": "Cross-check corresponding manual section with actual UI/CLI and the cited implementation.",
+      "publication_blocker": false
+    },
+    {
+      "id": "UM-COVERAGE-07",
+      "decision": "revise",
+      "priority": "P3",
+      "rationale": "Resetting or recovering preferences: settings are stored in UserDefaults; the app bundle (org.swiftspim.local) and `swift run SwiftSpim` keep separate settings; and how to return to defaults.",
+      "evidence": "Debugger.swift:60–151; Docs/Info.plist",
+      "action": "Explain preference recovery and bundle defaults domain. Verify separate development domains before naming them.",
+      "validation": "Cross-check corresponding manual section with actual UI/CLI and the cited implementation.",
+      "publication_blocker": false
+    },
+    {
+      "id": "UM-COVERAGE-08",
+      "decision": "accept",
+      "priority": "P3",
+      "rationale": "Building the upstream r764 reference spim (for example, the spim/ Makefile build) so that SPIM_REFERENCE and SPIM_EXCEPTION_FILE in Section 13 can actually be set.",
+      "evidence": "Scripts/compare-upstream.sh; upstream spim/Makefile",
+      "action": "Provide or link verified upstream build, executable and exception resource paths.",
+      "validation": "Cross-check corresponding manual section with actual UI/CLI and the cited implementation.",
+      "publication_blocker": false
+    },
+    {
+      "id": "UM-COVERAGE-09",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "Known differences from QtSpim for users moving over: Run is disabled after an exit instead of restarting, panels are additional inspectors rather than dockable widgets, the upstream CLI options -assemble/-dump/-full_dump are replaced by --dump-instruction-words, and the console is a separate window.",
+      "evidence": "QtSpim/menu.cpp:265–306; QtSpim/state.cpp:47,144; spim/spim.cpp:236–241,275–281",
+      "action": "Document terminal-only output-file modes and interactive REPL outside requested Qt GUI scope; no terminal clone required. Implement the Qt layout behavior under ASTRA-DOCK.",
+      "validation": "Cross-check corresponding manual section with actual UI/CLI and the cited implementation.",
+      "publication_blocker": true
+    },
+    {
+      "id": "ORACLE-FAULT-STATUS",
+      "decision": "accept",
+      "priority": "P1",
+      "rationale": "Guest runtime diagnostics normally leave native CLI exit status zero.",
+      "evidence": "SpimCLI/main.swift:150–161; additional-runtime-probes unknown-syscall, missing-instruction and exit-status.",
+      "action": "Distinguish simulator tool/usage errors, guest runtime diagnostics, user step budget and guest exit2.",
+      "validation": "Compare captured stream bytes/status for each; exit2 7 stays 7.",
+      "publication_blocker": true
+    },
+    {
+      "id": "ORACLE-EXCEPTION-VECTOR",
+      "decision": "accept",
+      "priority": "P1",
+      "rationale": "A missing handler still vectors architecturally and the next fetch reports the empty vector.",
+      "evidence": "Machine.swift:328–344; CPU/syscall.cpp:241–300; integer-overflow oracle.",
+      "action": "Record native quiet-sensitive diagnostic, update CP0 and vector regardless of loaded text. Test custom/default/absent handlers.",
+      "validation": "Compare PC, Cause, BD/EPC, BadVAddr, stderr and exit status, also for data faults.",
+      "publication_blocker": true
+    },
+    {
+      "id": "ORACLE-UNRESOLVED-J",
+      "decision": "accept",
+      "priority": "P2",
+      "rationale": "Jump display uses absolute symbolic annotation; address-relative suffix belongs to branches.",
+      "evidence": "Machine.swift:380–388; CPU/run.cpp:239–241; undefined-jump oracle.",
+      "action": "Match upstream rendering and strip label/comment source prefixes as upstream does.",
+      "validation": "Exact J and branch fixture stdout/stderr/status.",
+      "publication_blocker": true
+    },
+    {
+      "id": "ORACLE-BYTE-OUTPUT",
+      "decision": "accept",
+      "priority": "P1",
+      "rationale": "String decoding destroys non-UTF-8 bytes.",
+      "evidence": "Machine.swift:714,804,819; SpimCLI/main.swift:150–152; print-byte-ff oracle.",
+      "action": "Preserve byte streams through CLI. Decode only for UI rendering. Cover print-char/string, MMIO and fd writes.",
+      "validation": "Compare raw FF, NUL, and multibyte sequences delivered via separate calls.",
+      "publication_blocker": true
+    },
+    {
+      "id": "ORACLE-DEFAULT-START",
+      "decision": "accept",
+      "priority": "P1",
+      "rationale": "Default entry lookup in production targets is __start, yielding zero when absent. Public library convenience semantics need not change.",
+      "evidence": "CPU/spim-utils.cpp:190; QtSpim/menu.cpp:299–313; spim/spim.cpp:387; Machine.swift:128–135.",
+      "action": "Use explicit SPIM entry selection in GUI and CLI. Preserve explicit PC and library defaults.",
+      "validation": "Compare no-handler main-only, __start, explicit PC and resource-backed defaults.",
+      "publication_blocker": true
+    },
+    {
+      "id": "ORACLE-EOF",
+      "decision": "reject",
+      "priority": "P3",
+      "rationale": "Both CLIs print 10 at EOF for read_char.",
+      "evidence": "additional-input-probes read-char-at-eof",
+      "action": "Retain the behavior.",
+      "validation": "Check EOF when changing byte input.",
+      "publication_blocker": false
+    },
+    {
+      "id": "SSPIM-ASM-001",
+      "decision": "accept",
+      "priority": "P1",
+      "rationale": "Native duplicate-label assembly continued to the final instructions and printed 42. Semantic parser actions may emit data/instructions even after diagnostics.",
+      "evidence": [
+        "Sources/SpimCore/Assembler.swift 228-234 (catch + unlabeled break exits the per-line loop); throw sites 312, 544, 566, 678, 757, 772, 1073",
+        "Upstream yyerror() only sets parse_error_occurred and prints (parser.y:2941-2946); the line still finishes via LINE_PARSE_DONE=YYACCEPT (parser.y:455), and read_assembly_file loops `while (!yyparse())` (spim-utils.cpp:180-181). Only a real grammar syntax error ends the file. Duplicate labels (sym-tbl.cpp:164), data in text (parser.y:2117 etc.), register range (parser.y:2525), break 1 (parser.y:845), divide by zero (parser.y:1105) and Rev2 'Instruction ignored' (parser.y:2959) all continue."
+      ],
+      "action": "Match recovery per native diagnostic class and preserve exact partial effects, strict mode and true syntax-error file termination.",
+      "validation": "Add XCTests for each semantic-error class checking that later labels and instructions exist. Add a compare-upstream fixture with a duplicate label followed by a valid program and compare stdout, stderr and status.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-UI-001",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "A 12 ms sleep for every 1024 instructions imposes a ceiling even before interpretation overhead. The review did not measure an actual speed ratio.",
+      "evidence": [
+        "Sources/SwiftSpim/Debugger.swift 319-344 (323 machine.run(maxSteps: 1024); 342 Task.sleep(nanoseconds: 12_000_000))",
+        "QtSpim runs 100,000-instruction batches and only calls processEvents in between (menu.cpp:265-276), running coursework at native interpreter speed."
+      ],
+      "action": "Use time-budgeted chunks and yield to the main actor without an unconditional per-chunk sleep. Benchmark run speed and test Pause/input responsiveness.",
+      "validation": "Add a benchmark fixture (e.g. a 50M-iteration loop) and record GUI wall time against the CLI. Add a timer.s/time.s run comparing interrupt counts per instruction.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-ASM-002",
+      "decision": "accept",
+      "priority": "P1",
+      "rationale": "Native interactive read A, read B, run printed 42 when A references a later helper in B without .globl. Earlier-file unresolved uses survive the local-symbol flush.",
+      "evidence": [
+        "Sources/SpimCore/Assembler.swift 190-214 (pre-pass marks every file-defined label local), 140-145 (key), 237-263 (fixups resolved before scoped labels are published)",
+        "Upstream creates a label entry on first use (lookup_label, sym-tbl.cpp:134-154). A later definition fills in that same entry (record_label, 159-179) and clear_labels resolves the recorded uses (parser.y:2699-2704; sym-tbl.cpp:221-235). flush_local_labels runs afterwards (sym-tbl.cpp:334-356). The earlier file's reference therefore resolves."
+      ],
+      "action": "Resolve in load order; retain duplicate local definitions and avoid exporting previously finalized locals. Test both orderings.",
+      "validation": "Add an XCTest with the a.s/b.s pair: expect no unresolved symbols and halted(0). Add the reverse load order to confirm it stays undefined, as upstream.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-DBG-001",
+      "decision": "accept",
+      "priority": "P2",
+      "rationale": "Input suspension keeps the syscall PC unchanged after breakpoint bypass has already been consumed.",
+      "evidence": [
+        "Sources/SpimCore/Machine.swift 195-204 (breakpointSkip cleared before execute), 392-400 (waitingInput returns without advancing pc); Sources/SwiftSpim/Debugger.swift 316, 328-330, 369-381",
+        "In QtSpim the syscall blocks inside read_input (spim_support.cpp:111-127; syscall.cpp:130-136), so once the breakpoint is continued the instruction completes without stopping again (menu.cpp:377-384)."
+      ],
+      "action": "Carry the one-instruction bypass across input suspension until completion. Test run and step, including repeated visits.",
+      "validation": "Core test: breakpoint on the read syscall, run → paused, run → waitingInput, provideInput, run → must reach halted without another pause at that pc. Also cover the Debugger.sendInput path in a UI or unit test.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-MSG-001",
+      "decision": "accept",
+      "priority": "P1",
+      "rationale": "The comparison script sets quiet on one side. Native CP0 diagnostics have their own output stream.",
+      "evidence": [
+        "Sources/SpimCore/Machine.swift 328-344 (exception() produces no message); Sources/SpimCLI/main.swift 95-98; Scripts/compare-upstream.sh 19-20",
+        "Upstream handle_exception writes 'Exception occurred at PC=0x%08x' plus a reason (e.g. '  Arithmetic overflow') through error() unless quiet (syscall.cpp:241-299). The terminal error() writes to stderr (spim.cpp:860-871). QtSpim appends to Messages and shows a dialog (spim_support.cpp:60-69; spimview.cpp:268-284). -bare sets quiet (spim.cpp:172; QtSpim main.cpp:141)."
+      ],
+      "action": "Compare both sides with identical flags in quiet and verbose mode. Preserve asynchronous diagnostics in GUI Messages and stderr.",
+      "validation": "compare-upstream with and without -quiet on an overflow/trap fixture; expect byte-identical stderr.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-DBG-002",
+      "decision": "accept",
+      "priority": "P1",
+      "rationale": "Recreating Machine loses private execution state. Qt incremental load retains the running world.",
+      "evidence": [
+        "Sources/SwiftSpim/Debugger.swift 249-263",
+        "QtSpim's Load File assembles the new file into the existing world without reinitializing memory or registers (menu.cpp:64-84; read_assembly_file, spim-utils.cpp:170-188)."
+      ],
+      "action": "Incrementally apply new assembly and fixups with a defined conflict policy on live writes. Preserve live allocations, pending loads/branches, fd, device and debugger state.",
+      "validation": "Test: sbrk 64 KiB beyond the initial heap, write a word there, append-load a trivial file, read it back with no exception. Also cover open-file and delay-slot survival.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-IO-001",
+      "decision": "duplicate",
+      "priority": "P1",
+      "rationale": "ORACLE-BYTE-OUTPUT also applies to syscall input and byte streams split across emissions.",
+      "evidence": [
+        "Sources/SpimCore/Machine.swift 714 (emit decodes each syscall's bytes as UTF-8), 819 (print_char), 851 (write to fd 1/2); Sources/SpimCLI/main.swift 139-140, 150-152, 160",
+        "Upstream writes raw bytes ('%c', syscall.cpp:168-170; vfprintf in spim.cpp:908-939) and reads raw bytes (spim.cpp:943-969). CLI stdout byte parity is part of the compatibility claim."
+      ],
+      "action": "Add raw input, EOF and output APIs. Test fd0/1/2 separately as well as MMIO.",
+      "validation": "CLI fixtures printing 0x80-0xFF bytes and a char-by-char UTF-8 string, compared byte-exact against the r764 CLI; test with non-UTF-8 stdin.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-IO-002",
+      "decision": "accept",
+      "priority": "P2",
+      "rationale": "Foundation UTF-8-only reads reject native byte-oriented source. Naive Latin-1 fallback followed by UTF-8 re-encoding also changes literal bytes.",
+      "evidence": [
+        "Sources/SwiftSpim/Debugger.swift 216 and 242; Sources/SpimCLI/main.swift 107",
+        "Upstream opens the file with fopen and scans bytes (spim-utils.cpp:171-181), so comments assemble untouched and string bytes are stored as-is."
+      ],
+      "action": "Preserve original bytes in directives while allowing display decoding; test comments, 0xe9 literals and valid UTF-8 across CLI and GUI.",
+      "validation": "Fixture with a Latin-1 comment and `.asciiz` containing 0xE9; expect a successful load and the exact data byte.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-RES-001",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "Generated Bundle.module can trap when resources are absent. A locally retained build-tree fallback can mask a false passing relocation check.",
+      "evidence": [
+        "Sources/SpimCore/Assembler.swift 38-44",
+        "Upstream reports 'Cannot read exception handler' and stops (spim-utils.cpp:111-112)."
+      ],
+      "action": "Use recoverable lookup or package the handler with a documented valid layout. Missing resources must report an actionable error. Test with original build resources unavailable.",
+      "validation": "Script: copy the CLI binary alone to a temp directory and run hello world; expect success or a clean error message, not a trap.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-MODE-001",
+      "decision": "accept",
+      "priority": "P2",
+      "rationale": "Explicit Qt settings for branch and load delay are independent of bare-machine execution after preset selection.",
+      "evidence": [
+        "Sources/SpimCore/Machine.swift 216-217; Sources/SpimCore/Assembler.swift 702; Sources/SwiftSpim/DebugDialogs.swift 136-140; listing uses only delayedBranches at DebugPanels.swift 127 and Debugger.swift 484",
+        "Upstream execution and branch encoding use only delayed_branches/delayed_loads (run.cpp:104-160; sym-tbl.cpp:264); bare_machine does not imply them."
+      ],
+      "action": "Use individual delay settings consistently in encoding, execution and listing. Exercise all combinations including bare+no delay.",
+      "validation": "Unit test: bareMachine=true, delayedBranches=false; branch encoding and execution should match the upstream CLI run with -bare plus a modified build, or reasoned expected words.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-MMIO-001",
+      "decision": "accept",
+      "priority": "P2",
+      "rationale": "Device readiness is level state; upstream raises interrupt pending on transition or enable-on-ready.",
+      "evidence": [
+        "Sources/SpimCore/Machine.swift 364",
+        "Upstream raises TRANS_INT only when the buffer becomes ready or when interrupts are enabled on a ready device (mem.cpp:538-549, 556-564). A cleared Cause bit stays clear."
+      ],
+      "action": "Implement transition/enable behavior and test clearing Cause while transmitter remains ready.",
+      "validation": "Interrupt-driven output fixture counting handler entries, compared with the r764 CLI under -mapped_io.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-CLI-001",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "Direct EOF test gave upstream 0 and Swift 10 as read_string first byte, and upstream 0 vs Swift 1 for read(fd0). Service 12 yielded 10 on both.",
+      "evidence": [
+        "Sources/SpimCLI/main.swift 159-161",
+        "Upstream read() returns 0, so read_input yields an empty string (spim.cpp:954-966) and the read syscall returns 0 (syscall.cpp:198-208)."
+      ],
+      "action": "Model EOF explicitly with per-service semantics and preserve incomplete lines; retain service 12 newline rule.",
+      "validation": "CLI fixtures reading past EOF, compared with r764 stdout and status.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-ASM-003",
+      "decision": "accept",
+      "priority": "P2",
+      "rationale": "Reserved $at checking and ignored directives are observable diagnostics. Fatal .err must stop assembly and leave the GUI usable.",
+      "evidence": [
+        "Sources/SpimCore/Assembler.swift 627-634 (noAT set but never consulted; .repeat/.struct silently ignored), 630 (.err)",
+        "parser.y:2526-2527 warns on $1 when not bare and noat is off; 2285-2288 and 2341-2344 print 'Warning: … directive ignored'; 2213-2216 calls fatal_error."
+      ],
+      "action": "Compare warnings and .err termination using controlled oracle cases, including .set noat and following files.",
+      "validation": "Diagnostic-text tests compared with r764 stderr output.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-START-001",
+      "decision": "duplicate",
+      "priority": "P1",
+      "rationale": "Covered by ORACLE-DEFAULT-START and ORACLE-EXCEPTION-VECTOR.",
+      "evidence": [
+        "Sources/SpimCore/Machine.swift 98-99, 132, 339-343",
+        "Upstream starts only at __start (spim-utils.cpp:190-192; spim.cpp:295). Without it PC=0, which leads to IBE → 0x80000180 → 'Attempt to execute non-instruction at 0x80000180' (run.cpp:229-237)."
+      ],
+      "action": "Implement both linked items.",
+      "validation": "CLI comparison of -noexception with a main-only program.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-STACK-001",
+      "decision": "accept",
+      "priority": "P1",
+      "rationale": "Native copies environ and argv, aligns and pushes pointer arrays; current stack simulates empty envp.",
+      "evidence": [
+        "Sources/SpimCore/Machine.swift 137-166",
+        "initialize_run_stack copies every environ entry before argv and builds the envp vector (spim-utils.cpp:237-270). QtSpim and the CLI both do this."
+      ],
+      "action": "Provide injectable ordered byte environment and production SPIM ABI layout. Use a synthetic env in tests; verify $sp/argv/envp, long args, bounds.",
+      "validation": "Fixture printing argc, argv and the first envp entries with `env -i FOO=bar` on both implementations.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-SYS-001",
+      "decision": "accept",
+      "priority": "P2",
+      "rationale": "Upstream reports data-capacity exhaustion as allocation/run error, outside CP0 exception machinery.",
+      "evidence": [
+        "Sources/SpimCore/Machine.swift 812-817",
+        "expand_data reports 'Can't expand data segment…' plus run_error 'Use -ldata…' (mem.cpp:187-197), which aborts the run in the CLI (longjmp, spim.cpp:890-904). In QtSpim it shows an error dialog."
+      ],
+      "action": "Match growth/rounding and failure diagnostics, including CLI versus GUI behavior. Verify no CP0 vector on sbrk limit.",
+      "validation": "Compare-memory-layout case requesting more than -ldata.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-CLI-002",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "Original -asm/-bare do not change pseudo permission. Terminal argc scanning has quirks and Qt treats positional arguments as files.",
+      "evidence": [
+        "Sources/SpimCLI/main.swift 62-63, 99-101; Sources/SwiftSpim/Debugger.swift 186-191",
+        "Upstream treats a non-dash argument as the program file followed by program arguments (spim.cpp:219-235; QtSpim main.cpp:186-190). -asm/-bare do not touch accept_pseudo_insts (spim.cpp:164-172; QtSpim main.cpp:133-141)."
+      ],
+      "action": "Respect mode and pseudo flags independently for each front end. Preserve documented CLI -file guest arguments and GUI file list; document positional behavior and test explicitly.",
+      "validation": "CLI flag-matrix tests.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-DBG-003",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "See UM-RERUN-10. F5 loop overwrites STOPPED with IDLE; a universal restart on exit or Abort is false. Do not equate manual Stop and natural Single Step termination.",
+      "evidence": [
+        "Sources/SwiftSpim/Debugger.swift 161-167 (mayExecute), 354-360 (stop); Sources/SwiftSpim/DebugDialogs.swift 71",
+        "QtSpim restarts at the start address with a fresh stack when status is STOPPED and not force_break, which covers both a finished program and Abort (menu.cpp:299-307, 372-374, 395). Memory is not reloaded."
+      ],
+      "action": "Check actual Qt F5/F10/Abort sequencing. Implement observed resumability; label manual reset recipes.",
+      "validation": "UI test: exit → Run reruns from __start; Abort → Run restarts.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-UI-002",
+      "decision": "accept",
+      "priority": "P2",
+      "rationale": "Qt datawin.cpp:102–141 serializes segment bounds and collapsed zero runs. Sparse dictionary keys omit entire allocated regions.",
+      "evidence": [
+        "Sources/SwiftSpim/Debugger.swift 402-418 (rows built from machine.memory keys), 487-489 (export uses the same rows)",
+        "QtSpim's data window and log print the user data segment range up to data_top, collapsing zero runs, plus stack and kernel data (datawin.cpp; menu.cpp:136-141 exports the window text)."
+      ],
+      "action": "Use segment extents and compressed zero ranges in inspection and export. Verify heap, empty .space and stack.",
+      "validation": "Export comparison against QtSpim's saved log for a .space fixture.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-PERF-001",
+      "decision": "revise",
+      "priority": "P3",
+      "rationale": "Whole-string and sorted-address rebuilds exist. The impact and need for a new memory representation have not been established.",
+      "evidence": [
+        "Sources/SwiftSpim/DebugPanels.swift 322-325 (whole output as one Text, onChange compares full strings); Debugger.swift 402-418 (sorts all memory keys per render); Machine.swift 19 ([UInt32: UInt8] memory)",
+        "Responsive UI comparable to QtSpim's QTextEdit append model."
+      ],
+      "action": "Measure sustained console/data workloads and responsiveness, reuse cached or incremental data where observed. Defer wholesale memory representation replacement absent measurements.",
+      "validation": "Profile with a 5 MB output fixture and a 16 MB memory-fill fixture.",
+      "publication_blocker": false
+    },
+    {
+      "id": "SSPIM-UI-003",
+      "decision": "duplicate",
+      "priority": "P2",
+      "rationale": "Same hidden syscall newline bug as UM-CONSOLE-04.",
+      "evidence": [
+        "Sources/SwiftSpim/DebugPanels.swift 332-334; Sources/SwiftSpim/Debugger.swift 374",
+        "Syscall input completes per line."
+      ],
+      "action": "Fix with the effective MMIO mode.",
+      "validation": "UI or unit test of sendInput in both modes.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-DOC-001",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "Host path choice is upstream-compatible but descriptor policy, stream routing and transfer limits affect guest-visible behavior.",
+      "evidence": [
+        "Docs/COMPATIBILITY.md 24 (also usermanual.md:237; Machine.swift 828-830, 832-856)",
+        "Upstream passes guest fds straight to host open/read/write/close (syscall.cpp:189-228)."
+      ],
+      "action": "Correct supported fd0/1/2 reads/writes, preserve separate binary streams, document virtual descriptor numbers and bounded transfer behavior. Do not close simulator host UI/diagnostic handles to emulate guest close.",
+      "validation": "Doc review; fixtures for fd 1 write and large reads.",
+      "publication_blocker": true
+    },
+    {
+      "id": "SSPIM-UI-004",
+      "decision": "accept",
+      "priority": "P2",
+      "rationale": "Qt textwin.cpp:85–95 inspects live instruction slots within displayed ranges. Swift enumerates only assembly metadata.",
+      "evidence": [
+        "Sources/SwiftSpim/Debugger.swift 397-401 (instructions from image.instructions); Machine.swift 304-306 creates new code entries",
+        "QtSpim's text window renders the live text segment, regenerated on text_modified (mem.cpp:53, 484)."
+      ],
+      "action": "List executable slots from the live code map for UI and log; attach source only when valid. Test new writes, overwrites and section boundaries.",
+      "validation": "Self-modifying fixture; check the listing and log contents.",
+      "publication_blocker": true
+    },
+    {
+      "id": "CODE-COVERAGE-01",
+      "decision": "accept",
+      "priority": "P3",
+      "rationale": "Read-only review: nothing was built, run, or timed. No finding was confirmed by execution, and the .build/*.log validation claims were not independently checked.",
+      "evidence": "Reviewed-snapshot manifest and MACOS-VALIDATION.md",
+      "action": "Document exact scope of the read-only Opus review and independently rerun native validation before publication.",
+      "validation": "Record inputs, observed results and finite scope in verification record.",
+      "publication_blocker": false
+    },
+    {
+      "id": "CODE-COVERAGE-02",
+      "decision": "revise",
+      "priority": "P2",
+      "rationale": "AssemblerOpcodes.swift (opcode/spec table) and Tests/SpimCoreTests/SpimCoreTests.swift were not read line by line. Pseudo-instruction expansions were spot-checked against inst.cpp/parser.y only where noted, not exhaustively (e.g. numeric branch targets, `(expr)>>n` immediates, gp-relative .extern/.lcomm forms, ulh/ush/rol/ror sequences in big-endian).",
+      "evidence": "AssemblerOpcodes.swift; native word dump and assembler suite",
+      "action": "Compare high-risk assembler expansions, endian cases and forward fixups using focused fixtures. A line-by-line review of every test is not an independent release requirement.",
+      "validation": "Record inputs, observed results and finite scope in verification record.",
+      "publication_blocker": true
+    },
+    {
+      "id": "CODE-COVERAGE-03",
+      "decision": "accept",
+      "priority": "P2",
+      "rationale": "The disassembly text format was not compared with upstream inst_to_string/print_inst; QtSpim textwin/datawin/regwin rendering, the exact log format and FP register window fields were not compared in detail.",
+      "evidence": "QtSpim/textwin.cpp:85–124; datawin.cpp:102–141; regwin.cpp",
+      "action": "Check source/word/disassembly text and numeric formatting, zero ranges, representative FP fields and all-panel export against the installed Qt app.",
+      "validation": "Record inputs, observed results and finite scope in verification record.",
+      "publication_blocker": true
+    },
+    {
+      "id": "CODE-COVERAGE-04",
+      "decision": "accept",
+      "priority": "P2",
+      "rationale": "Timer/interrupt timing (upstream checks interrupts only per run_spim chunk / IO_INTERVAL, not every instruction) and timer.s/time.s/read.s behavior were not evaluated; those fixtures are not used by any test or script.",
+      "evidence": "CPU/run.cpp:163–204; CPU/mem.cpp:538–564",
+      "action": "Exercise timer.s/time.s/read.s with bounded deterministic stimuli where feasible. Compare device transitions and guest-visible IRQ/EPC.",
+      "validation": "Record inputs, observed results and finite scope in verification record.",
+      "publication_blocker": true
+    },
+    {
+      "id": "CODE-COVERAGE-05",
+      "decision": "revise",
+      "priority": "P3",
+      "rationale": "Big-endian mode has no upstream oracle; endian-specific paths (lwl/lwr/swl/swr, li.d, doubles, MMIO) were reviewed only by reading.",
+      "evidence": "tt.be; Machine.swift memory, FP and unaligned access paths",
+      "action": "Record lack of native big-endian reference; use endian-specific vectors and byte-layout assertions. An original big-endian host is not a prerequisite to these fixes.",
+      "validation": "Record inputs, observed results and finite scope in verification record.",
+      "publication_blocker": false
+    },
+    {
+      "id": "CODE-COVERAGE-06",
+      "decision": "revise",
+      "priority": "P3",
+      "rationale": "SwiftUI lifecycle concerns not verified: whether Console window onDisappear at app quit removes .console from saved panels; whether Xcode-injected launch arguments (e.g. -NSDocumentRevisionsDebugMode YES) are treated as files by Debugger.launch (Debugger.swift:537-543); main-thread blocking if a guest opens a FIFO in unrestricted host-file mode.",
+      "evidence": "SwiftSpimApp.swift:48–71; Debugger.swift:494–547; Machine.swift:750–793",
+      "action": "Test real relaunch console persistence and app launch argument handling. Evaluate blocking file/device I/O separately with a controlled workload before claiming a UI freeze.",
+      "validation": "Record inputs, observed results and finite scope in verification record.",
+      "publication_blocker": false
+    },
+    {
+      "id": "CODE-COVERAGE-07",
+      "decision": "accept",
+      "priority": "P2",
+      "rationale": "No tests exist for: semantic-error recovery, cross-file forward references, breakpoint plus input interaction, Debugger.sendInput/run/load(keepState) logic, CLI flag parsing, exception message output, non-UTF-8 I/O, sbrk failure, MMIO interrupt-driven output, or relocation of the CLI binary.",
+      "evidence": "Linked SSPIM findings and their reproduction/validation fields",
+      "action": "Add regression checks at the affected layer for each confirmed semantic defect. Include service-specific EOF, incremental load/input, options, relocation and IRQ cases.",
+      "validation": "Record inputs, observed results and finite scope in verification record.",
+      "publication_blocker": true
+    },
+    {
+      "id": "CODE-COVERAGE-08",
+      "decision": "accept",
+      "priority": "P3",
+      "rationale": "Upstream quirks (e.g. spim.cpp re-assigning program_argv for each later non-dash argument, QtSpim state.cpp saving 'CommandLine' but reading 'CommandLineArguments') were noted but not treated as parity requirements.",
+      "evidence": "QtSpim/state.cpp; spim/spim.cpp:219–235",
+      "action": "Retain purposeful documented terminal argument behavior. Avoid copying upstream Qt preference-key typos.",
+      "validation": "Record inputs, observed results and finite scope in verification record.",
+      "publication_blocker": false
+    },
+    {
+      "id": "ASTRA-DOCK",
+      "decision": "accept",
+      "priority": "P2",
+      "rationale": "User can move, float, retab and restore native Qt panes. Separate duplicate inspectors plus fixed tabs do not provide that function. Native widget styling and icon identity are cosmetic.",
+      "evidence": "QtSpim/spimview.cpp:54–65; menu.cpp:693–711; state.cpp:47,144,209; SwiftSpimApp.swift:60–71.",
+      "action": "Support equivalent pane movement, floating/redocking, tab grouping, tiling and saved layout via native SwiftUI controls.",
+      "validation": "Move a pane to another group, float it, edit shared state, quit/reopen, redock and restore defaults. Compare functional results with Qt.",
+      "publication_blocker": true
+    }
+  ]
+}

@@ -1,0 +1,212 @@
+{
+  "review_date": "2026-11-23",
+  "requested_model": "claude-opus-5-5",
+  "session_model": "claude-opus-5-5",
+  "report": {
+    "model": "claude-opus-5-5",
+    "summary": "I checked all 386 lines of usermanual.md against SwiftSpimApp.swift, Debugger.swift, DebugPanels.swift, DebugDialogs.swift, Machine.swift, Assembler.swift, Models.swift, the CLI main.swift, all four scripts, README, COMPATIBILITY.md, MACOS-VALIDATION.md, THIRD_PARTY_NOTICES.txt and Info.plist. I compared against the r764 QtSpim and spim sources only where it mattered. Most of the manual is accurate: menu names, shortcuts, the build script rules, Hello World, the tt.core input walkthrough, Save Log and Print, the CLI table, the legacy segment switches and the attribution text all match the source. I found no P0 or P1 problems. There are three P2 gaps. First, Stop and the breakpoint dialog's Abort only pause the program; Run picks up again from the same PC. Second, memory-mapped I/O does nothing in bare mode, but the manual never says so and the console still behaves as if it were on. Third, the app's launch arguments are mentioned but never explained, and they quietly get saved as preferences. The P3 findings are about hidden state the manual doesn't mention (Append newline, Cancel in Run Parameters, editing PC skipping run parameters, Quiet hiding undefined-symbol and fault messages), the Data pane showing zeros at instruction addresses, CLI option order, how to re-run a program, file-local labels in multi-file programs, duplicate Window-menu items, relative guest file paths, internal validation history and stale links in a product manual, and the fallback when no custom handler file is chosen.",
+    "findings": [
+      {
+        "id": "UM-STOP-01",
+        "priority": "P2",
+        "manual_location": "usermanual.md:116 and usermanual.md:129",
+        "title": "Stop and Abort are described as ending execution, but Run picks up again from the current PC",
+        "problematic_instruction": "| **Stop** | `⇧F5`; toolbar also supports `⌘.` | Stops execution without clearing the loaded program or memory. |  /  5. Choose **Single Step** to execute the instruction at the breakpoint, **Continue** to resume, or **Abort** to stop.",
+        "source_evidence": "Sources/SwiftSpim/Debugger.swift:354-360 (stop() = pause() + machine.stop(), status label 'Stopped'); Sources/SpimCore/Machine.swift:174 (stop() sets .paused and clears breakpointSkip); Sources/SwiftSpim/Debugger.swift:161-167 (mayExecute is true when paused); Sources/SwiftSpim/Debugger.swift:301-302 (run parameters are not re-applied once didStart is set); Sources/SpimCore/Machine.swift:197-200 (a breakpoint at the PC fires again because breakpointSkip is nil); Sources/SwiftSpim/DebugDialogs.swift:71 (Abort calls stop()). Same behavior as upstream: QtSpim/menu.cpp:284-288,299-306.",
+        "why_it_matters": "Beginners will read 'Stop' and 'Abort' as ending the run and expect F5 to start over. Instead F5 continues from where the program stopped, with the same registers and stack. After Abort, F5 shows the same Breakpoint Reached dialog again before anything runs, which looks like a hang or a bug.",
+        "suggested_correction": "Say that Stop, like Pause, halts execution and keeps all state, and that Run/Continue (F5) resumes from the current PC. Explain that after Abort, the next Run reports the same breakpoint once more; choose Continue or Single Step to move past it, or clear the breakpoint. To start over, use Clear Registers and then Run (memory is kept), or use Reinitialize and Load File for a clean start.",
+        "validation": "Reinitialize and load helloworld.s, set a breakpoint at main, press F5, then choose Abort. The status shows Stopped. Press F5: Breakpoint Reached appears again at the same address. Choose Continue: Hello World prints and the status shows Exited (0)."
+      },
+      {
+        "id": "UM-MMIO-02",
+        "priority": "P2",
+        "manual_location": "usermanual.md:174 and usermanual.md:305",
+        "title": "Memory-mapped I/O does nothing in bare mode, and the manual doesn't say so",
+        "problematic_instruction": "Enable **Memory-mapped I/O** in **Settings → Simulator**, then reinitialize and load the relevant program. The console then offers **Append newline**.  /  | `-mapped_io`, `-nomapped_io` | Enable or disable memory-mapped console I/O. |",
+        "source_evidence": "Sources/SpimCore/Machine.swift:218 (mmio = mappedIO && !bareMachine); Sources/SpimCore/Machine.swift:357-365 (receiver is fed only when mmio is true); Sources/SpimCLI/main.swift:135 (CLI feeds stdin only if !bareMachine); Sources/SwiftSpim/DebugDialogs.swift:141 (the MMIO toggle stays enabled in bare mode); Sources/SwiftSpim/DebugPanels.swift:332-334 and Debugger.swift:375 (Append newline appears and echo is off based only on mappedIO). Upstream does the same: CPU/run.cpp:174,184.",
+        "why_it_matters": "With Bare Machine and Memory-mapped I/O both on, the console shows the MMIO controls and stops echoing input, but the program's receiver never becomes ready. A polling program spins forever and gives no hint why.",
+        "suggested_correction": "Add: 'Memory-mapped I/O works only when bare mode is off. With Bare Machine selected (or -bare on the command line), the device registers never receive input, even though the console shows MMIO controls.' Add the same caveat to the CLI table row and to the 'Program appears stuck' troubleshooting entry.",
+        "validation": "Turn on Bare Machine and Memory-mapped I/O, reinitialize, and load tt.io.s (or another polling program). Send input: the program never sees it. Turn off Bare Machine, reinitialize, and repeat: the input arrives."
+      },
+      {
+        "id": "UM-LAUNCH-03",
+        "priority": "P2",
+        "manual_location": "usermanual.md:328 and usermanual.md:341",
+        "title": "App launch arguments are mentioned but not explained, and some of them are saved as preferences",
+        "problematic_instruction": "The CLI and app's launch-argument parser accept SPIM's legacy switches, with a positive decimal byte count:",
+        "source_evidence": "Sources/SwiftSpim/SwiftSpimApp.swift:54 (launch(CommandLine.arguments)); Sources/SwiftSpim/Debugger.swift:494-547 (app parser: -bare also sets quiet at 501; -file treats every following token as a source file at 533-536; --pc, --guest-directory, --no-file-io and --big-endian are not recognized and only log 'Unknown option' at 538); Sources/SwiftSpim/Debugger.swift:186-192 (configureBare saves preferences immediately); Sources/SwiftSpim/Debugger.swift:231 (a successful load saves preferences, including mappedIO, handler and quiet). Upstream QtSpim/main.cpp:186-189 also treats everything after -file as files.",
+        "why_it_matters": "The only way to change GUI segment sizes is through launch arguments, but the manual never shows how to pass them. Users who try CLI-style guest arguments after -file get 'file not found' errors. Launching once with -bare or -mapped_io changes later normal launches (bare mode plus Quiet stay on) with nothing to tell the user.",
+        "suggested_correction": "Add a section called 'Launching the app with SPIM options'. Show `open -n dist/SwiftSpim.app --args -sdata 200000 -file /absolute/path/prog.s` and the equivalent direct call to `dist/SwiftSpim.app/Contents/MacOS/SwiftSpim`. Explain: everything after -file is a source file, not a guest argument (use Run Parameters for those); use absolute paths; the CLI-only `--` options are not accepted; -bare also turns on Quiet; mode switches such as -bare, -asm, -mapped_io, -pseudo and -exception/-ef are saved as Settings, while segment sizes apply only to that session. Say how to undo them in Settings.",
+        "validation": "Launch the bundle with `--args -bare -file /abs/helloworld.s` and quit. Launch it normally and open Settings: Bare machine and Quiet are still on."
+      },
+      {
+        "id": "UM-CONSOLE-04",
+        "priority": "P3",
+        "manual_location": "usermanual.md:155",
+        "title": "The newline is only added while a hidden Append newline setting is on",
+        "problematic_instruction": "For ordinary syscall input, SwiftSpim appends a newline and shows your submitted input in the console.",
+        "source_evidence": "Sources/SwiftSpim/Debugger.swift:49 (appendNewline is session state and is never reset); Sources/SwiftSpim/Debugger.swift:374 (the newline is added only if appendNewline is true); Sources/SwiftSpim/DebugPanels.swift:332-334 (the toggle is shown only when the current machine has mappedIO on).",
+        "why_it_matters": "If a user turns Append newline off during an MMIO exercise and then goes back to an ordinary program in the same session, read_int, read_string and similar calls get input without a newline. The program keeps waiting, and the toggle that would fix it can't be seen.",
+        "suggested_correction": "Add: 'The Append newline choice stays in effect for the rest of the session even after you leave memory-mapped mode. If syscall input stops working after an MMIO exercise, turn MMIO on again, turn Append newline back on, or relaunch the app.'",
+        "validation": "Enable MMIO, reinitialize, and turn Append newline off. Disable MMIO, reinitialize, and load tt.core.s. Enter 17 and press Send: the program stays in Waiting for input."
+      },
+      {
+        "id": "UM-RUNPARAM-05",
+        "priority": "P3",
+        "manual_location": "usermanual.md:141-147",
+        "title": "Cancel in Run Parameters keeps what you typed",
+        "problematic_instruction": "1. Set the desired run parameters and choose **Done**.",
+        "source_evidence": "Sources/SwiftSpim/DebugDialogs.swift:26-27 (the text fields write directly to debugger.startAddress and debugger.arguments); Sources/SwiftSpim/DebugDialogs.swift:77 (Cancel only closes the sheet); Sources/SwiftSpim/Debugger.swift:303-310 (those values are used at the next initialized Run or Step).",
+        "why_it_matters": "A user who types a start address or arguments and then chooses Cancel still gets them on the next run, so execution can begin at an unexpected address or with unexpected argc/argv.",
+        "suggested_correction": "Say that the fields take effect as you type and Cancel does not undo them. To remove parameters, clear the fields and choose Done.",
+        "validation": "Open Set Run Parameters, type `main`, choose Cancel, reinitialize and load helloworld.s, then Single Step. The PC starts at main, not __start."
+      },
+      {
+        "id": "UM-PCEDIT-06",
+        "priority": "P3",
+        "manual_location": "usermanual.md:190",
+        "title": "Editing PC before the first run means run parameters are never applied",
+        "problematic_instruction": "Editing PC changes where execution will proceed.",
+        "source_evidence": "Sources/SwiftSpim/Debugger.swift:450 (editing PC sets didStart = true); Sources/SwiftSpim/Debugger.swift:301-313 (readyToStart returns early, so setRunParameters never runs); Sources/SpimCore/Machine.swift:61-68,137-166 (the stack built at init uses the empty GUI argument list).",
+        "why_it_matters": "If you set program arguments and then change PC before pressing Run, the program starts with argc=0 and your arguments are silently dropped.",
+        "suggested_correction": "Add: 'Changing PC marks the program as started. Run Parameters (start address and arguments) are not applied after that. Set them, then Clear Registers or reinitialize, before editing PC.'",
+        "validation": "Set the arguments to `a b`, reinitialize and load a program that prints $a0 at main, edit PC to the address of main, then run. It prints 0 instead of 3."
+      },
+      {
+        "id": "UM-QUIET-07",
+        "priority": "P3",
+        "manual_location": "usermanual.md:227 and usermanual.md:350",
+        "title": "Quiet also hides undefined-symbol, fault, exit and breakpoint messages",
+        "problematic_instruction": "**Quiet** suppresses routine debugger messages; it is not a switch to suppress guest program output.",
+        "source_evidence": "Sources/SwiftSpim/Debugger.swift:284-287 (log() does nothing when quiet); Sources/SwiftSpim/Debugger.swift:246-248 ('Undefined symbols:' goes through log); Sources/SwiftSpim/Debugger.swift:327,333,359,367 (exit/fault status, breakpoint, stop and step-fault lines go through log); Sources/SwiftSpim/Debugger.swift:245 (assembler diagnostics bypass Quiet); Sources/SwiftSpim/Debugger.swift:501 (launching with -bare turns Quiet on).",
+        "why_it_matters": "The troubleshooting entry tells users to look for an undefined-symbol message, but with Quiet on that message never appears in Messages, and neither do fault reasons from Run. Quiet can be on without the user choosing it, because -bare turns it on and that setting is saved.",
+        "suggested_correction": "Spell out what Quiet hides: load/reset notices, the undefined-symbols list, exit/fault status lines, breakpoint and stop notices. Say that assembler diagnostics still appear. In troubleshooting, add 'turn off Quiet' as a first step.",
+        "validation": "Turn on Quiet, reinitialize, and load helloworld.s (it references the undefined foobar). Messages shows no 'Undefined symbols: foobar' line. Turn Quiet off and reload: the line appears."
+      },
+      {
+        "id": "UM-DATA-08",
+        "priority": "P3",
+        "manual_location": "usermanual.md:137 and usermanual.md:204",
+        "title": "The Data pane shows zeros at instruction addresses, even though editing there changes the instruction",
+        "problematic_instruction": "Use it to find instruction and data labels for breakpoints, run parameters, or memory navigation.  /  Enter a numeric address or symbol in **Address or symbol**, then press Return to navigate to its aligned 16-byte row.",
+        "source_evidence": "Sources/SwiftSpim/Debugger.swift:419-425 (readWord reads only machine.memory); Sources/SpimCore/Machine.swift:40,79-80 (instruction words are kept in a separate code table); Sources/SpimCore/Machine.swift:304-306,317-321 (a Data-pane write to a text address changes the instruction in that code table); Sources/SwiftSpim/Debugger.swift:412-416 (the jump row for a text address is shown under the User Data filter).",
+        "why_it_matters": "Going to `main` in the Data tab shows 0x00000000, which suggests the instruction isn't there. If the user then edits that 'zero' word, the instruction is overwritten while the Data pane keeps showing zero. MMIO addresses at 0xffff0000 and above also always show 0.",
+        "suggested_correction": "Say that memory navigation is for data, stack and kernel-data addresses. Instruction words appear only in the Text tab. Changing a word at a text address changes the instruction (self-modifying code), and only the Text tab shows the result. Device registers are not shown in the Data pane.",
+        "validation": "Load helloworld.s, type `main` in Address or symbol, and press Return: the row reads zeros, while the Text tab shows a non-zero word at that address."
+      },
+      {
+        "id": "UM-CLIORDER-09",
+        "priority": "P3",
+        "manual_location": "usermanual.md:300-304 and usermanual.md:324",
+        "title": "Only file-access options are documented as order-dependent, but every CLI option is",
+        "problematic_instruction": "| `-exception`, `-noexception` | Include or omit the bundled exception handler. |  /  File-access options are processed in order.",
+        "source_evidence": "Sources/SpimCLI/main.swift:58-104 (options are processed left to right); main.swift:62 (-asm turns delays off and pseudo-instructions on); main.swift:63 (-bare turns pseudo-instructions off); main.swift:66-68,110-113 (-exception after -ef FILE keeps the custom file and does not switch back to the bundled handler). Compare Sources/SwiftSpim/Debugger.swift:504-505 (the app's -exception switches back to the default handler).",
+        "why_it_matters": "`-delayed_loads -asm` silently turns delays off, `-nopseudo -asm` turns pseudo-instructions back on, and `-ef h.s -exception` still loads h.s in the CLI but the bundled handler in the app. Users copying SPIM command lines get different machines depending on option order and on whether they use the CLI or the app.",
+        "suggested_correction": "State one general rule: options are applied left to right and a later option overrides an earlier one. Say that -asm and -bare reset the pseudo and delay settings, so they should come first. Reword -exception as 'load an exception handler (a custom file named earlier with -ef is still used in the CLI)'.",
+        "validation": "Run `swift run swiftspim-cli -delayed_branches -asm -file X.s` with a program that depends on delayed branches; it behaves as if delays were off. Run `-ef custom.s -exception` and check that the custom handler's banner or behavior appears."
+      },
+      {
+        "id": "UM-RERUN-10",
+        "priority": "P3",
+        "manual_location": "usermanual.md:59, usermanual.md:97-99, usermanual.md:347",
+        "title": "How to re-run a program is vague, and what Clear Registers does is incomplete",
+        "problematic_instruction": "Run is disabled after a completed or faulted program until the machine is prepared for another execution.",
+        "source_evidence": "Sources/SpimCore/Machine.swift:112-126 (clearRegisters sets PC to 0 and status to .ready); Sources/SwiftSpim/Debugger.swift:277-283 (didStart=false, so the next Run applies run parameters and the entry point, Machine.swift:128-135); Sources/SwiftSpim/Debugger.swift:251-255 (after an exit, Load File creates a ready machine but copies the old PC, so Run is enabled again and continues from that stale PC). QtSpim restarts on Run after an exit: QtSpim/menu.cpp:299-306.",
+        "why_it_matters": "QtSpim users press F5 after a program exits to run it again. The manual doesn't name the closest equivalent here (Clear Registers, then Run), and it doesn't warn that pressing Load File after an exit re-enables Run from the old PC, which usually ends in a fault.",
+        "suggested_correction": "Spell out what 'prepared' means. Clear Registers then Run restarts at the entry point with current memory and console output kept. Reinitialize and Load File gives a clean restart. Load File after an exit keeps the old PC and is not a restart. Also add to the Clear Registers section that it resets PC.",
+        "validation": "Run helloworld.s to Exited (0). Choose Clear Registers: Run becomes enabled, and F5 prints Hello World a second time after the first."
+      },
+      {
+        "id": "UM-SCOPE-11",
+        "priority": "P3",
+        "manual_location": "usermanual.md:85",
+        "title": "Labels are local to their file unless declared .globl, and the manual doesn't say so",
+        "problematic_instruction": "SwiftSpim reassembles the current source set, allowing references to global symbols in additional files to be resolved.",
+        "source_evidence": "Sources/SpimCore/Assembler.swift:195-214 (a label is local to its file unless named in .globl/.global/.extern/.comm; main, __start and __eoth are always global); Sources/SpimCore/Assembler.swift:257-263 (a local label defined in more than one file is dropped from the visible symbol table).",
+        "why_it_matters": "In multi-file exercises the usual failure is 'Undefined symbol' because the defining file left out .globl. A local label defined in two files also can't be used by name for breakpoints or navigation. The manual gives no rule to follow.",
+        "suggested_correction": "Add: 'A label is visible only inside its own file unless that file declares it with .globl (or .extern/.comm). main and __start are always global. If two files define the same local label, it does not appear in Show Symbols and you can't use it by name; use its numeric address instead.'",
+        "validation": "Load a.s, which calls `foo` defined without .globl in b.s: an undefined symbol is reported. Add `.globl foo` to b.s, use Reinitialize and Load File for both files: the reference resolves."
+      },
+      {
+        "id": "UM-WINMENU-12",
+        "priority": "P3",
+        "manual_location": "usermanual.md:153 and usermanual.md:245",
+        "title": "The Window menu has two items with the same name for each panel, and they do different things",
+        "problematic_instruction": "The **Window** menu toggles the main register, text, data, console, and messages areas.",
+        "source_evidence": "Sources/SwiftSpim/SwiftSpimApp.swift:24-26,127-128 (panel toggles named 'Integer Registers', 'Floating-Point Registers', 'Text Segments', 'Data Segments', 'Console', 'Messages'); Sources/SwiftSpim/SwiftSpimApp.swift:60-71 (single-instance Window scenes with the same titles, which SwiftUI adds to the Window menu by itself).",
+        "why_it_matters": "The checkmarked 'Integer Registers' item shows or hides the main-window tab. The plain item with the same name opens a separate inspector. A user who picks the wrong one won't see the result the manual describes.",
+        "suggested_correction": "After checking the built app, tell users which items are the checkmarked panel toggles and which ones open separate windows. Better still, rename one of the sets in the code (for example, 'Show Integer Registers Tab').",
+        "validation": "Open the Window menu in dist/SwiftSpim.app and count the 'Integer Registers' and 'Console' items. Choose each one and note what happens."
+      },
+      {
+        "id": "UM-RELPATH-13",
+        "priority": "P3",
+        "manual_location": "usermanual.md:237",
+        "title": "Relative guest file paths are relative to /, not the source folder, when the app is opened from Finder or `open`",
+        "problematic_instruction": "An absolute path gives a predictable location; a relative host path depends on the app's working directory.",
+        "source_evidence": "Sources/SpimCore/Machine.swift:750-758 (in unrestricted mode, open(path) is called directly, so relative paths resolve against the process working directory).",
+        "why_it_matters": "Course programs often open files like \"data.txt\". From the app bundle these resolve against the root directory rather than next to the .s file, so opens fail or point at the wrong file, and the manual doesn't say what the working directory actually is.",
+        "suggested_correction": "State that apps started from Finder or `open` run with / as the working directory, while `swift run` uses the shell's current directory. Recommend absolute paths, or the restricted-folder option, where paths are relative to the chosen folder.",
+        "validation": "From the bundle, run a program that opens \"data.txt\" for reading with data.txt next to the .s file: $v0 = -1. Repeat with an absolute path, or with the restricted folder set to that directory: the open succeeds."
+      },
+      {
+        "id": "UM-HISTORY-14",
+        "priority": "P3",
+        "manual_location": "usermanual.md:5, usermanual.md:361, usermanual.md:383",
+        "title": "The manual includes internal validation history and points to a compatibility record that contradicts itself",
+        "problematic_instruction": "consult [the compatibility record](Docs/COMPATIBILITY.md) for the latest test results and open checks.  /  A compiler-cache error in a restricted development shell ... the writable-cache invocation used in that environment.  /  The native checks recorded on November 23, 2026 passed 30 core tests...",
+        "source_evidence": "Docs/COMPATIBILITY.md:17-18 (still says 26 tests on Linux and six fixtures compared on stdout and exit status only) contradicts Docs/COMPATIBILITY.md:33-34 (30 tests, seven fixtures including stderr); Docs/COMPATIBILITY.md:38 ('external peer review remains in progress'); Docs/MACOS-VALIDATION.md:40-48 (notes about the restricted sandbox environment).",
+        "why_it_matters": "You asked for the manual to describe the product, not its process history. Sending readers to COMPATIBILITY.md as the 'latest' results exposes stale and conflicting numbers plus review-status notes, and the restricted-shell note doesn't apply to a typical user.",
+        "suggested_correction": "Replace the dated paragraph with a neutral statement of what the comparison scripts cover. Move the restricted-shell note to developer docs. Before linking COMPATIBILITY.md as the current record, remove or mark the superseded Linux-era results and the peer-review status line.",
+        "validation": "Read COMPATIBILITY.md from top to bottom: the test counts and fixture coverage should agree everywhere, and there should be no review-process notes."
+      },
+      {
+        "id": "UM-HANDLER-15",
+        "priority": "P3",
+        "manual_location": "usermanual.md:233",
+        "title": "If no custom handler file is chosen, the bundled handler still loads",
+        "problematic_instruction": "To supply your own handler, enable loading, turn off **Use default exception handler**, and choose the custom assembly file.",
+        "source_evidence": "Sources/SwiftSpim/Debugger.swift:239-243 (the custom file is used only when handlerPath is not empty; otherwise effective.loadExceptionHandler stays true and Assembler.swift:38-44 inserts the bundled exceptions.s).",
+        "why_it_matters": "Turning off 'Use default exception handler' without picking a file looks like 'no default handler', but the bundled startup code and handler are still loaded. Exercises about writing your own handler would quietly test against the default one.",
+        "suggested_correction": "Add: 'If the custom path is empty, SwiftSpim still loads the bundled handler. To run with no handler, turn off Load exception handler.'",
+        "validation": "Turn off Use default exception handler, clear the path, reinitialize: __start and the kernel text from the bundled handler still appear in the Text tab."
+      },
+      {
+        "id": "UM-ARGV0-16",
+        "priority": "P3",
+        "manual_location": "usermanual.md:149",
+        "title": "argv[0] is the full path of the last file loaded, not necessarily the file that contains main",
+        "problematic_instruction": "The program path is supplied before the additional arguments.",
+        "source_evidence": "Sources/SwiftSpim/Debugger.swift:309 (argv[0] = files.last full path). Upstream does something similar: QtSpim/menu.cpp:312-313 (most recent file).",
+        "why_it_matters": "In multi-file sessions, programs that print or parse argv[0] see whichever file was loaded last, as a full absolute path.",
+        "suggested_correction": "Change to: 'argv[0] is the full path of the most recently loaded source file, followed by your arguments.'",
+        "validation": "Load main.s and then util.s, run a program that prints argv[0]: it prints the full path of util.s."
+      }
+    ],
+    "missing_sections": [
+      "Launching the app with SPIM command-line options: how to pass them (open -n --args or the bundle executable), that everything after -file is a file, which options are CLI-only, that options are saved as preferences, and how to undo them (see UM-LAUNCH-03).",
+      "What each control resets: a table showing what Pause, Stop, Clear Registers, Reinitialize Simulator, Load File and Reinitialize and Load File do to PC, registers, memory, console output, the input buffer, breakpoints, run parameters, open guest files and settings, plus the recommended way to re-run a program.",
+      "Syscall reference: services 1–17 as implemented (print, read with newline and length rules, sbrk limits, exit/exit2, open/read/write/close returning -1 on failure, and fd 0/1/2 behavior), since beginner exercises depend on these.",
+      "Multi-file programs: .globl/.extern rules, load order, duplicate-label errors when a second program is added with Load File, and using Reinitialize and Load File when switching to a different exercise.",
+      "Exceptions and faults: what 'Fault:' in the status bar means, what happens with no handler loaded (the simulator stops) versus the default handler (prints a message and continues), and how EPC, Cause and BadVAddr help with debugging.",
+      "Help menu: SwiftSpim Help (⌘?), the Original SPIM Documentation link, and About.",
+      "Resetting or recovering preferences: settings are stored in UserDefaults; the app bundle (org.swiftspim.local) and `swift run SwiftSpim` keep separate settings; and how to return to defaults.",
+      "Building the upstream r764 reference spim (for example, the spim/ Makefile build) so that SPIM_REFERENCE and SPIM_EXCEPTION_FILE in Section 13 can actually be set.",
+      "Known differences from QtSpim for users moving over: Run is disabled after an exit instead of restarting, panels are additional inspectors rather than dockable widgets, the upstream CLI options -assemble/-dump/-full_dump are replaced by --dump-instruction-words, and the console is a separate window."
+    ],
+    "strengths": [
+      "Menu names, toolbar labels, dialog titles and button labels (Toggle Breakpoint, Breakpoint Reached with Abort/Single Step/Continue, Choose File…, Print…) match the source exactly.",
+      "Shortcuts match the code: ⌘O, ⇧⌘O, ⇧⌘S, ⌘P, ⌘B, F5, F10, ⇧F5, and the toolbar's ⌘R/⌘T/⌘. The fn/Globe note is useful.",
+      "The build section matches build-app.sh correctly: it requires a new .app destination, supports SWIFTSPIM_CONFIGURATION=debug, copies the handler bundle and notices, and the bundle isn't notarized.",
+      "The Hello World and tt.core walkthroughs follow working paths, including the six fixture input lines and the expected 'Passed all tests'.",
+      "The warning that Reinitialize and Load clears state before the file chooser opens, so Cancel can't restore the old program, matches the code.",
+      "The number-entry rules (unprefixed means decimal, 0x, 0b, symbols, word alignment) match Debugger.number() and submitBreakpoint().",
+      "The FP editing description (lowercase 0x for raw bits, double pairs following guest byte order) matches apply() and Machine.doubleRegister.",
+      "The Save Log and Print descriptions (sections, default content, current words after self-modifying code, region filters) match exportText().",
+      "The CLI table, the -file and guest-argument rule, the last-option-wins rule for --guest-directory/--no-file-io, the --pc numeric-only limit, the --max-steps default and the legacy segment switches (rounding, 64 KiB data minimum, rejecting unsafe values) all match main.swift and Models.swift.",
+      "The guest file-access description (host paths by default, restricted mode rejecting absolute paths, traversal, symlinks and non-regular files, restriction with no folder disabling opens) matches Machine.openInGuestDirectory and Preferences.",
+      "Attribution and licensing statements are accurate: upstream notices are kept and bundled, Qt is not shipped, and no new contribution license is claimed.",
+      "The verification wording is careful and avoids claiming full QtSpim compatibility."
+    ]
+  }
+}

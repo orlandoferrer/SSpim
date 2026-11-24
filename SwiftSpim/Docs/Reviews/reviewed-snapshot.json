@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-23",
+  "review_model": "claude-opus-5-5",
+  "files": {
+    "Package.swift": "6db7f1dac220fa2ce0ba7aa96562ba8b2fcef94197d7033ca03816eb5b9e5822",
+    "Sources/SpimCLI/main.swift": "9faa86f65b5fe76ecf29751db793edf76fffc73f586c73bac88d7d50455da394",
+    "Sources/SpimCore/Assembler.swift": "cff0f469102eee7878c7da5352679e49042cc21e207445e0ce9f99663829b10c",
+    "Sources/SpimCore/AssemblerOpcodes.swift": "452ab0188981f0a9d064a5c5f916d0cc34a8b8d9faf411e3e2d1ac79eac322d6",
+    "Sources/SpimCore/Disassembler.swift": "08cefc3dbb0bf591e50256909033f349c00bf4717d6711c2f21a009ae573c149",
+    "Sources/SpimCore/Machine.swift": "f59d5643ff230e77795a1a33bd58a519e17186963a92d8571178d8e7b85992dc",
+    "Sources/SpimCore/Models.swift": "2d0c14ba8739707bbb3e29e844c46b402cc3fe02eb84ad8d2b6e7e8261ade76d",
+    "Sources/SwiftSpim/DebugDialogs.swift": "87d7ac7837d9e2dc1f0eae0376864ee8c21fc5173a24823fee3dbce22c230942",
+    "Sources/SwiftSpim/DebugPanels.swift": "13bdef9560f22a4b4f7e0170cef51c4eef50f2c8ee43365039c5d8dc37711b91",
+    "Sources/SwiftSpim/Debugger.swift": "7275536bb363bed8fb20eecb05da51c0c18e88bd648fff62994ff8479503ef3e",
+    "Sources/SwiftSpim/SwiftSpimApp.swift": "aef2dfa97e951e94eb7e5492d367867bcf4ba4cd1c2b87bea80f9a3d7f4ebc25",
+    "Tests/SpimCoreTests/AssemblerParityTests.swift": "5cd2b2d5f2b45b4017044b08436f24bffb3bae21bf5ebb9082f4db9cc2837297",
+    "Tests/SpimCoreTests/MachineParityTests.swift": "1ccd967ea542285da250c59821eb9bec447048a6b51b59556fb00e5cc1a473c2",
+    "Tests/SpimCoreTests/SpimCoreTests.swift": "4f639eb432b31958c34c958ad9a098a8f51ce4f918902924e41da6f168157d67",
+    "Scripts/build-app.sh": "9a475206ab3ebd1042e73bd84b418cbba32d1cbc6323b49a5794e73d798bace9",
+    "Scripts/compare-memory-layout.sh": "57bea57239992d75fed8b4f1fb87b35dd29622b025886224c60cb7ee0e04e12d",
+    "Scripts/compare-upstream.sh": "ae59fb160c381e37913dbee2062c12d42da7ae8c9b2045b4b78df40215a5adee",
+    "Scripts/compare-words.sh": "be47b1b8dd3e88ede1d26477779d5eafa719502e4b198121945f217c42245175",
+    "usermanual.md": "c0dcb26dba40063b49c21d476cf6d2917da6757251504400e44127a33a1130ea"
+  }
+}
